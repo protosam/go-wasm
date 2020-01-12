@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<!-- See the README file for more info about this. -->
+<head>
+	<meta charset="utf-8">
+	<title>WASM</title>
+</head>
+
+<body>
+	<!--
+	Add the following polyfill for Microsoft Edge 17/18 support:
+	<script src="https://cdn.jsdelivr.net/npm/text-encoding@0.7.0/lib/encoding.min.js"></script>
+	(see https://caniuse.com/#feat=textencoder)
+	-->
+	<script src="/wasm_exec.js"></script>
+	<script>
+		if (!WebAssembly.instantiateStreaming) { // polyfill
+			WebAssembly.instantiateStreaming = async (resp, importObject) => {
+				const source = await (await resp).arrayBuffer();
+				return await WebAssembly.instantiate(source, importObject);
+			};
+		}
+
+		const go = new Go();
+		let mod, inst;
+		WebAssembly.instantiateStreaming(fetch("/test.wasm"), go.importObject).then((result) => {
+			mod = result.module;
+			inst = result.instance;
+			document.getElementById("runButton").disabled = false;
+
+            // Automatically start execution of the Go binary.
+            run();
+
+            // Run "speak" a few times spitting output from it into the console.
+            console.log(speak())
+            console.log(speak(1))
+            console.log(speak(2))
+            console.log(speak(3))
+            console.log(speak("a"))
+            console.log(speak("b"))
+            console.log(speak("c"))
+            console.log(speak("d"))
+		}).catch((err) => {
+			console.error(err);
+		});
+
+		async function run() {
+			await go.run(inst);
+			inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+		}
+	</script>
+
+	Open your browser console to see output.
+</body>
+</html>
